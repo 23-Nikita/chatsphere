@@ -19,7 +19,7 @@ export default function ChatLayout({ children }: ChatLayoutProps) {
   const [isMobile, setIsMobile] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  // 🔹 Detect mobile screen
+  // Detect mobile screen
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
     checkMobile();
@@ -27,7 +27,7 @@ export default function ChatLayout({ children }: ChatLayoutProps) {
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
-  // 🔹 Fetch users from Convex
+  //  Fetch users from Convex
   const allUsersQuery = useQuery(api.functions.users.getAllUsers) as User[] | undefined;
 
   useEffect(() => {
@@ -36,16 +36,16 @@ export default function ChatLayout({ children }: ChatLayoutProps) {
     }
   }, [allUsersQuery, user]);
 
-  // 🔹 Handle user click
+  // Handle user click
   const handleUserClick = (clickedUser: User) => {
     setSelectedUser(clickedUser);
     if (isMobile) setIsSidebarOpen(false); // close sidebar on mobile after selecting
   };
 
-  // 🔹 Toggle sidebar for hamburger
+  // Toggle sidebar for hamburger
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
-  // 🔹 Back button for mobile sidebar
+  // Back button for mobile sidebar
   const handleBack = () => setIsSidebarOpen(false);
 
   return (
