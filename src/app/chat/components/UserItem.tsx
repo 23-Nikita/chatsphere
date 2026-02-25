@@ -1,7 +1,8 @@
-// src/app/chat/components/UserItem.tsx
+"use client";
+
 import { UserItemProps } from "../types";
 
-// Note: UnreadCount ko props mein add kiya hai (Sidebar se pass hoga)
+
 interface ExtendedUserItemProps extends UserItemProps {
   unreadCount?: number;
 }
@@ -21,13 +22,17 @@ export default function UserItem({ user, onClick, unreadCount = 0 }: ExtendedUse
         <img
           src={user.imageUrl}
           alt={user.name}
+          // Fallback logic: if image is not load then add ui avatars with random background
+          onError={(e) => {
+            e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=random&color=fff`;
+          }}
           className="w-12 h-12 rounded-full object-cover border-2 border-transparent group-hover:border-white transition-all shadow-sm"
         />
         
-        {/*Online Status Indicator */}
+        {/* Online Status Indicator */}
         <span className={`
           absolute bottom-0.5 right-0.5 w-3.5 h-3.5 border-2 border-white rounded-full shadow-sm
-          ${user.isOnline ? "bg-green-500 animate-pulse-slow" : "bg-slate-300"}
+          ${user.isOnline ? "bg-green-500 animate-pulse" : "bg-slate-300"}
         `}></span>
       </div>
 
@@ -38,14 +43,14 @@ export default function UserItem({ user, onClick, unreadCount = 0 }: ExtendedUse
             {user.name}
           </h3>
           
-          {/*  Unread Message Badge */}
+          {/* Unread Message Badge */}
           {unreadCount > 0 && (
             <span className="
               flex items-center justify-center 
               bg-indigo-600 text-white text-[10px] font-bold 
               min-w-[20px] h-5 px-1.5 rounded-full 
               shadow-lg shadow-indigo-200 ring-2 ring-white
-              animate-in zoom-in duration-300
+              animate-bounce-short
             ">
               {unreadCount}
             </span>
@@ -61,7 +66,7 @@ export default function UserItem({ user, onClick, unreadCount = 0 }: ExtendedUse
             )}
           </p>
           
-          {/* Optional: Chat Now indicator on hover */}
+          {/* OPEN indicator on hover */}
           <span className="text-[10px] text-indigo-400 font-bold opacity-0 group-hover:opacity-100 transition-all translate-x-2 group-hover:translate-x-0">
             OPEN
           </span>

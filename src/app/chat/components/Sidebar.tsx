@@ -36,7 +36,7 @@ export default function Sidebar({
     ) || [];
   }, [users, searchTerm]);
 
-  // Loading State: Users ya Conversations missing hain toh skeleton dikhao
+  // Loading State: if users or conversations are undefined, show skeleton
   if (!users || conversations === undefined) {
     return <SidebarSkeleton />;
   }
@@ -87,7 +87,7 @@ export default function Sidebar({
             </div>
           ) : (
             filteredUsers.map(u => {
-              // Current conversation find karein
+              // Current conversation find
               const userConv = conversations?.find(conv => 
                 conv.memberIds.includes(u.clerkId) && conv.memberIds.includes(currentUserId)
               );
@@ -99,7 +99,7 @@ export default function Sidebar({
                   key={u._id}
                   user={{
                     ...u,
-                    // Fallback Avatar Logic: Agar image nahi hai toh UI-Avatars use karein
+                    // Fallback Avatar Logic: if imageUrl missing hai toh UI-Avatars se generate karo
                     imageUrl: u.imageUrl || `https://ui-avatars.com/api/?name=${u.name}&background=random`
                   }}
                   unreadCount={unreadCount} 
