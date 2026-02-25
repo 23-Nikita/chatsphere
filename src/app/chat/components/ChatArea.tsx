@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { User } from "../types";
-import { SendHorizontal, ChevronLeft, MoreVertical, RefreshCcw } from "lucide-react";
+import { SendHorizontal, ChevronLeft, MoreVertical } from "lucide-react";
 import { ChatSkeleton } from "./LoadingStates";
 
 export default function ChatArea({ selectedUser, currentUserId, onBack }: { selectedUser: User | null, currentUserId: string, onBack: () => void }) {
@@ -24,6 +24,7 @@ export default function ChatArea({ selectedUser, currentUserId, onBack }: { sele
   const typingMutation = useMutation(api.functions.conversations.setTypingStatus);
   const markAsSeenMutation = useMutation(api.functions.conversations.markAsSeen);
 
+  // Mark messages as seen when conversation opens or new messages arrive
   useEffect(() => {
     if (conversation?._id && currentUserId) {
       markAsSeenMutation({ 
@@ -31,7 +32,7 @@ export default function ChatArea({ selectedUser, currentUserId, onBack }: { sele
         userId: currentUserId 
       }).catch(console.error);
     }
-  }, [conversation?._id, messages?.length, currentUserId]);
+  }, [conversation?._id, messages?.length, currentUserId, markAsSeenMutation]);
 
   const isOtherTyping = conversation?.typingStatus?.isTyping && conversation?.typingStatus?.userId === selectedUser?.clerkId;
 
@@ -43,7 +44,7 @@ export default function ChatArea({ selectedUser, currentUserId, onBack }: { sele
 
     try {
       await sendMessageMutation({ 
-        // @ts-ignore - Bypass TS error for initial message where ID might be undefined
+        // @ts-ignore
         conversationId: conversation?._id, 
         senderId: currentUserId, 
         text: messageText,
@@ -54,7 +55,7 @@ export default function ChatArea({ selectedUser, currentUserId, onBack }: { sele
         await typingMutation({ conversationId: conversation._id, senderId: currentUserId, isTyping: false });
       }
     } catch (err) {
-      setError("Failed to send message. Please try again.");
+      setError("Failed to send message.");
     } finally {
       setIsSending(false);
     }
@@ -69,15 +70,18 @@ export default function ChatArea({ selectedUser, currentUserId, onBack }: { sele
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, isOtherTyping]);
 
-  if (selectedUser && conversation === undefined) {
-    return <ChatSkeleton />;
-  }
+  if (selectedUser && conversation === undefined) return <ChatSkeleton />;
 
   if (!selectedUser) return (
     <div className="flex-1 flex items-center justify-center text-slate-400 font-medium bg-slate-50">
       Select a friend to start chatting
     </div>
   );
+
+  // Helper for dynamic avatar
+  const getAvatarUrl = (user: User) => {
+    return user.imageUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=random&color=fff`;
+  };
 
   return (
     <div className="flex flex-col h-full w-full bg-white relative">
@@ -87,7 +91,14 @@ export default function ChatArea({ selectedUser, currentUserId, onBack }: { sele
             <ChevronLeft className="w-6 h-6 text-slate-600" />
           </button>
           <div className="relative">
-            <img src={selectedUser?.imageUrl} className="w-10 h-10 rounded-full object-cover ring-2 ring-slate-100" alt="" />
+            <img 
+              src={getAvatarUrl(selectedUser)} 
+              className="w-10 h-10 rounded-full object-cover ring-2 ring-slate-100" 
+              alt={selectedUser.name} 
+              onError={(e) => {
+                e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedUser.name)}&background=random`;
+              }}
+            />
             <span className={`absolute bottom-0 right-0 w-3 h-3 border-2 border-white rounded-full ${selectedUser?.isOnline ? "bg-green-500" : "bg-slate-300"}`}></span>
           </div>
           <div>
@@ -136,6 +147,7 @@ export default function ChatArea({ selectedUser, currentUserId, onBack }: { sele
       </div>
 
       <div className="p-4 bg-white border-t border-slate-100">
+        {error && <p className="text-red-500 text-xs mb-2 text-center">{error}</p>}
         <div className={`flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-2xl px-4 py-1.5 transition-all ${isSending ? "opacity-50" : "focus-within:ring-2 focus-within:ring-indigo-100"}`}>
           <input 
             value={messageText} 

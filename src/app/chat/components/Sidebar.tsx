@@ -1,12 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react"; // Added useMemo for performance
 import { useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import UserItem from "./UserItem";
 import { SidebarSkeleton } from "./LoadingStates";
-
-// Skeleton import 
 import { User } from "../types";
 import { Search, ChevronLeft, MessageSquare } from "lucide-react";
 
@@ -31,15 +29,17 @@ export default function Sidebar({
     userId: currentUserId,
   });
 
-  //Loading State Handle karein
-  // if conversations and users are still loading, show the skeleton
+  // Search logic optimized with useMemo
+  const filteredUsers = useMemo(() => {
+    return users?.filter(u =>
+      u.name.toLowerCase().includes(searchTerm.toLowerCase())
+    ) || [];
+  }, [users, searchTerm]);
+
+  // Loading State: Users ya Conversations missing hain toh skeleton dikhao
   if (!users || conversations === undefined) {
     return <SidebarSkeleton />;
   }
-
-  const filteredUsers = users.filter(u =>
-    u.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
 
   return (
     <div className="flex flex-col h-full bg-white border-r border-slate-200 w-full">
@@ -54,7 +54,10 @@ export default function Sidebar({
           </div>
           
           {isMobileView && onBack && (
-            <button onClick={onBack} className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-500">
+            <button 
+              onClick={onBack} 
+              className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-500"
+            >
               <ChevronLeft className="w-6 h-6" />
             </button>
           )}
@@ -67,7 +70,7 @@ export default function Sidebar({
             type="text"
             placeholder="Search friends..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)} // Search filter working kar diya
+            onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all placeholder:text-slate-400 text-slate-700"
           />
         </div>
@@ -84,6 +87,7 @@ export default function Sidebar({
             </div>
           ) : (
             filteredUsers.map(u => {
+              // Current conversation find karein
               const userConv = conversations?.find(conv => 
                 conv.memberIds.includes(u.clerkId) && conv.memberIds.includes(currentUserId)
               );
@@ -93,7 +97,11 @@ export default function Sidebar({
               return (
                 <UserItem
                   key={u._id}
-                  user={u}
+                  user={{
+                    ...u,
+                    // Fallback Avatar Logic: Agar image nahi hai toh UI-Avatars use karein
+                    imageUrl: u.imageUrl || `https://ui-avatars.com/api/?name=${u.name}&background=random`
+                  }}
                   unreadCount={unreadCount} 
                   onClick={() => onUserClick(u)}
                 />
