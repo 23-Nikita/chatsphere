@@ -4,15 +4,14 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { User } from "../types";
 import { SendHorizontal, ChevronLeft, MoreVertical, RefreshCcw } from "lucide-react";
-import { ChatSkeleton } from "./LoadingStates"; //Skeleton import
+import { ChatSkeleton } from "./LoadingStates";
 
 export default function ChatArea({ selectedUser, currentUserId, onBack }: { selectedUser: User | null, currentUserId: string, onBack: () => void }) {
   const [messageText, setMessageText] = useState("");
-  const [isSending, setIsSending] = useState(false); //Sending state
-  const [error, setError] = useState<string | null>(null); // Error state
+  const [isSending, setIsSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Queries
   const conversation = useQuery(api.functions.conversations.getConversationWithUser, 
     selectedUser ? { currentUserId, otherUserId: selectedUser.clerkId } : "skip"
   );
@@ -21,40 +20,41 @@ export default function ChatArea({ selectedUser, currentUserId, onBack }: { sele
     conversation?._id ? { conversationId: conversation._id } : "skip"
   );
 
-  // Mutations
   const sendMessageMutation = useMutation(api.functions.messages.sendMessage);
   const typingMutation = useMutation(api.functions.conversations.setTypingStatus);
-  const markAsSeenMutation = useMutation(api.functions.messages.markAsSeen);
+  const markAsSeenMutation = useMutation(api.functions.conversations.markAsSeen);
 
-  // Mark as seen logic
   useEffect(() => {
     if (conversation?._id && currentUserId) {
       markAsSeenMutation({ 
         conversationId: conversation._id, 
-        currentUserId: currentUserId 
+        userId: currentUserId 
       }).catch(console.error);
     }
-  }, [conversation?._id, messages?.length, currentUserId, markAsSeenMutation]);
+  }, [conversation?._id, messages?.length, currentUserId]);
 
-  // Typing Indicator Logic
   const isOtherTyping = conversation?.typingStatus?.isTyping && conversation?.typingStatus?.userId === selectedUser?.clerkId;
 
   const handleSendMessage = async () => {
-    if (!messageText.trim() || !selectedUser || !conversation?._id) return;
+    if (!messageText.trim() || !selectedUser) return;
     
     setIsSending(true);
     setError(null);
 
     try {
       await sendMessageMutation({ 
-        conversationId: conversation._id, 
+        // @ts-ignore - Bypass TS error for initial message where ID might be undefined
+        conversationId: conversation?._id, 
         senderId: currentUserId, 
-        text: messageText 
+        text: messageText,
+        receiverId: selectedUser.clerkId 
       });
       setMessageText("");
-      await typingMutation({ conversationId: conversation._id, senderId: currentUserId, isTyping: false });
+      if (conversation?._id) {
+        await typingMutation({ conversationId: conversation._id, senderId: currentUserId, isTyping: false });
+      }
     } catch (err) {
-      setError("Failed to send message. Please try again."); // 🔹 Error handling
+      setError("Failed to send message. Please try again.");
     } finally {
       setIsSending(false);
     }
@@ -69,19 +69,23 @@ export default function ChatArea({ selectedUser, currentUserId, onBack }: { sele
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, isOtherTyping]);
 
-  // Loading State 
-  if (selectedUser && messages === undefined) {
+  if (selectedUser && conversation === undefined) {
     return <ChatSkeleton />;
   }
 
-  if (!selectedUser) return <div className="flex-1 flex items-center justify-center text-slate-400 font-medium bg-slate-50">Select a friend to start chatting</div>;
+  if (!selectedUser) return (
+    <div className="flex-1 flex items-center justify-center text-slate-400 font-medium bg-slate-50">
+      Select a friend to start chatting
+    </div>
+  );
 
   return (
     <div className="flex flex-col h-full w-full bg-white relative">
-      {/* Header */}
       <header className="px-4 py-3 border-b border-slate-100 flex items-center justify-between sticky top-0 z-20 bg-white/80 backdrop-blur-md">
         <div className="flex items-center gap-3">
-          <button onClick={onBack} className="md:hidden p-2 -ml-2 hover:bg-slate-100 rounded-full transition-colors"><ChevronLeft className="w-6 h-6 text-slate-600" /></button>
+          <button onClick={onBack} className="md:hidden p-2 -ml-2 hover:bg-slate-100 rounded-full transition-colors">
+            <ChevronLeft className="w-6 h-6 text-slate-600" />
+          </button>
           <div className="relative">
             <img src={selectedUser?.imageUrl} className="w-10 h-10 rounded-full object-cover ring-2 ring-slate-100" alt="" />
             <span className={`absolute bottom-0 right-0 w-3 h-3 border-2 border-white rounded-full ${selectedUser?.isOnline ? "bg-green-500" : "bg-slate-300"}`}></span>
@@ -98,9 +102,8 @@ export default function ChatArea({ selectedUser, currentUserId, onBack }: { sele
         </button>
       </header>
 
-      {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-[#F8FAFC]">
-        {messages && messages.length === 0 && (
+        {(!messages || messages.length === 0) && (
           <div className="flex-1 flex flex-col items-center justify-center py-20 opacity-40 text-slate-500">
             <p className="text-sm font-medium text-center">No messages yet.<br/>Say hi to {selectedUser.name}! 👋</p>
           </div>
@@ -132,22 +135,11 @@ export default function ChatArea({ selectedUser, currentUserId, onBack }: { sele
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Error State with Retry  */}
-      {error && (
-        <div className="mx-4 mb-2 p-2 bg-red-50 border border-red-100 rounded-lg flex items-center justify-between animate-in fade-in slide-in-from-bottom-1">
-          <p className="text-xs text-red-600 font-medium">{error}</p>
-          <button onClick={handleSendMessage} className="flex items-center gap-1 text-[10px] font-bold text-red-700 uppercase tracking-wider hover:underline">
-            <RefreshCcw className="w-3 h-3" /> Retry
-          </button>
-        </div>
-      )}
-
-      {/* Input Section */}
       <div className="p-4 bg-white border-t border-slate-100">
-        <div className={`flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-2xl px-4 py-1.5 transition-all ${isSending ? "opacity-50" : "focus-within:ring-2 focus-within:ring-indigo-100 focus-within:bg-white"}`}>
+        <div className={`flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-2xl px-4 py-1.5 transition-all ${isSending ? "opacity-50" : "focus-within:ring-2 focus-within:ring-indigo-100"}`}>
           <input 
             value={messageText} 
-            disabled={isSending}
+            disabled={isSending} 
             onChange={(e) => handleTyping(e.target.value)} 
             onKeyDown={(e) => e.key === "Enter" && !isSending && handleSendMessage()}
             placeholder={isSending ? "Sending..." : "Type your message..."} 
@@ -155,7 +147,7 @@ export default function ChatArea({ selectedUser, currentUserId, onBack }: { sele
           />
           <button 
             onClick={handleSendMessage} 
-            disabled={!messageText.trim() || isSending}
+            disabled={!messageText.trim() || isSending} 
             className="p-2 bg-indigo-600 text-white rounded-xl shadow-md hover:bg-indigo-700 disabled:bg-slate-300 transition-all active:scale-90"
           >
             <SendHorizontal className={`w-5 h-5 ${isSending ? "animate-pulse" : ""}`} />

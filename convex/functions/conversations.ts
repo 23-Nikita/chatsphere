@@ -1,4 +1,3 @@
-// convex/functions.ts (Conversation related logic)
 import { mutation, query } from "../_generated/server";
 import { v } from "convex/values";
 
@@ -42,6 +41,7 @@ export const createConversation = mutation({
     return await ctx.db.insert("conversations", {
       memberIds: sortedMembers,
       createdAt: args.createdAt,
+      typingStatus: { isTyping: false, userId: "" }, // Schema consistency
     });
   },
 });
@@ -66,37 +66,34 @@ export const getConversationWithUser = query({
 
 // ------------------- GET MESSAGES BY CONVERSATION -------------------
 export const getMessagesByConversation = query({
-  args: {
-    conversationId: v.id("conversations"),
-  },
-  handler: async (ctx, { conversationId }) => {
+  args: { conversationId: v.id("conversations") },
+  handler: async (ctx, args) => {
+    const conversation = await ctx.db.get(args.conversationId);
+    if (!conversation) return [];
+
     return await ctx.db
       .query("messages")
-      .withIndex("by_conversationId", (q) =>
-        q.eq("conversationId", conversationId)
-      )
-      .order("asc")
+      .withIndex("by_conversationId", (q) => q.eq("conversationId", args.conversationId))
+      .order("asc") 
+      .filter((q) => q.eq(q.field("deleted"), false)) // Mandatory as per your schema
       .collect();
   },
 });
 
-// ------------------- GET USER CONVERSATIONS (Updated with Unread Count) -------------------
+// ------------------- GET USER CONVERSATIONS (With Unread Count) -------------------
 export const getUserConversations = query({
   args: {
     userId: v.string(),
   },
   handler: async (ctx, { userId }) => {
-    // 1. Saari conversations fetch karein
     const allConversations = await ctx.db.query("conversations").collect();
 
-    // 2. Filter karein wahi jisme current user member hai
     const userConversations = allConversations.filter((conv) =>
       conv.memberIds.includes(userId)
     );
 
     const results = await Promise.all(
       userConversations.map(async (conv) => {
-        // Last message nikalne ke liye
         const lastMessage = await ctx.db
           .query("messages")
           .withIndex("by_conversationId", (q) =>
@@ -105,9 +102,7 @@ export const getUserConversations = query({
           .order("desc")
           .first();
 
-        // 🔹 REQUIREMENT #9 Logic: Unread messages count karein
-        // Wo messages jo is conversation mein hain, seen: false hain, 
-        // aur current user ne nahi bheje.
+        // Count unread: not seen AND not sent by current user
         const unreadMessages = await ctx.db
           .query("messages")
           .withIndex("by_conversationId", (q) =>
@@ -116,7 +111,8 @@ export const getUserConversations = query({
           .filter((q) =>
             q.and(
               q.eq(q.field("seen"), false),
-              q.neq(q.field("senderId"), userId)
+              q.neq(q.field("senderId"), userId),
+              q.eq(q.field("deleted"), false)
             )
           )
           .collect();
@@ -124,7 +120,7 @@ export const getUserConversations = query({
         return {
           ...conv,
           lastMessage,
-          unreadCount: unreadMessages.length, // Sidebar ko ye number milega
+          unreadCount: unreadMessages.length,
         };
       })
     );
@@ -137,7 +133,7 @@ export const getUserConversations = query({
   },
 });
 
-// ------------------- MARK AS SEEN (New Mutation) -------------------
+// ------------------- MARK AS SEEN -------------------
 export const markAsSeen = mutation({
   args: { 
     conversationId: v.id("conversations"), 
@@ -157,7 +153,6 @@ export const markAsSeen = mutation({
       )
       .collect();
 
-    // Saare unread messages ko seen: true kar do
     for (const msg of unreadMessages) {
       await ctx.db.patch(msg._id, { seen: true });
     }
