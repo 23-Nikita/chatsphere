@@ -1,6 +1,8 @@
 # ChatSphere 🚀
 A real-time 1-on-1 chat application built for the Tars Fullstack Engineer Challenge 2026.
 
+Live Demo: chatsphere-p7dgnezko-ng3551203-7196s-projects.vercel.app
+
 ## 🛠️ Tech Stack
 - **Framework:** Next.js 14 (App Router)
 - **Language:** TypeScript
