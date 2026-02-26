@@ -116,7 +116,7 @@ export default function ChatArea({ selectedUser, currentUserId, onBack }: { sele
       <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-[#F8FAFC]">
         {(!messages || messages.length === 0) && (
           <div className="flex-1 flex flex-col items-center justify-center py-20 opacity-40 text-slate-500">
-            <p className="text-sm font-medium text-center">No messages yet.<br/>Say hi to {selectedUser.name}! 👋</p>
+            <p className="text-sm font-medium text-center">No activity  yet.<br/>Say hi to {selectedUser.name}! 👋</p>
           </div>
         )}
         
