@@ -8,7 +8,7 @@ export default function Home() {
       
       {/* Welcome Heading */}
       <h2 className="text-4xl sm:text-5xl font-bold mb-6 text-gray-900 flex items-center justify-center gap-3">
-        Welcome to Chatapp
+        Welcome to ChatSphere
         <svg
           xmlns="http://www.w3.org/2000/svg"
           className="h-8 w-8 text-indigo-600 animate-bounce"
