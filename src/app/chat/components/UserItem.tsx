@@ -60,7 +60,7 @@ export default function UserItem({ user, onClick, unreadCount = 0 }: ExtendedUse
         <div className="flex items-center justify-between mt-0.5">
           <p className="text-xs text-slate-500 truncate font-medium">
             {user.isOnline ? (
-              <span className="text-green-600">Active</span>
+              <span className="text-green-600">Active now</span>
             ) : (
               "Away"
             )}
